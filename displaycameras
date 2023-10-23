@@ -81,10 +81,6 @@ cameras="${#camera_names[@]}"
 # Set the max camera rotation sequence as one less than the number of cameras
 # (since it starts at zero).
 max_seq=$((cameras-1))
-# Ensure sequence step value is reasonable
-if [ "$seq_step" = "" ] || [ "$seq_step" -gt "$max_seq" ] || [ "$seq_step" -lt "1" ]; then
-	seq_step=1
-fi
 
 # Figure out the current display sequence or set it to zero if it doesn't exist.
 if [ ! -f $DISPLAY_SEQUENCE_FILE ]; then
@@ -113,12 +109,18 @@ startupfailure=false
 feedfailure=false
 for i in ${!camera_names[*]}
 do
+	if [[ ${windows[$i]} =~ "PIP" ]]
+	then
+		pip="--layer=3"
+	else
+		pip=""
+	fi
 	startupretry=0
 	feedretry=0
 	x=$((i+$DISPLAY_SEQUENCE))
 	if [ "$x" -ge "${#camera_names[@]}" ]; then x=$((x-${#camera_names[@]}))
 	fi
-	player="omxplayer --no-keys --no-osd --avdict rtsp_transport:tcp --win \"${window_positions[$x]}\" \"${camera_feeds[$i]}\" --live -n -1 --timeout "$omx_timeout" --dbus_name "org.mpris.MediaPlayer2.omxplayer.${camera_names[$i]}" >/dev/null &"
+	player="omxplayer ${pip} --no-keys --no-osd --avdict rtsp_transport:tcp --win \"${window_positions[$x]}\" \"${camera_feeds[$i]}\" --live -n -1 --timeout "$omx_timeout" --dbus_name "org.mpris.MediaPlayer2.omxplayer.${camera_names[$i]}" >/dev/null &"
 	echo "Starting omxplayer for ${camera_names[$i]}"
 	eval $player
 	sleep $startsleep
@@ -168,7 +170,7 @@ if [ "$rotate" = "true" ]; then
 		rotatedelay=5
 	fi
 	echo "Starting camera rotation"
-	rotatedisplays $rotatedelay $seq_step &
+	rotatedisplays $rotatedelay &
 fi
 ;;
 
@@ -214,13 +216,19 @@ for i in ${!camera_names[*]}
 do
 	if [ "`omxplayer_dbuscontrol ${camera_names[$i]} getplaystatus`" != "Playing" -o "`omxplayer_dbuscontrol ${camera_names[$i]} getposition`" = "0s" ]
 	then
+		if [[ ${windows[$i]} =~ "PIP" ]]
+		then
+			pip="--layer=3"
+		else
+			pip=""
+		fi
 		rm -f $PIDFILE
 		pkill rotatedisplays
 		omxplayer_dbuscontrol ${camera_names[$i]} quit
 		x=$((i+$DISPLAY_SEQUENCE))
 		if [ "$x" -ge "${#camera_names[@]}" ]; then x=$((x-${#camera_names[@]}))
 		fi
-		player="omxplayer --no-keys --no-osd --avdict rtsp_transport:tcp --win \"${window_positions[$x]}\" \"${camera_feeds[$i]}\" --live -n -1 --timeout "$omx_timeout" --dbus_name "org.mpris.MediaPlayer2.omxplayer.${camera_names[$i]}" >/dev/null &"
+		player="omxplayer ${pip} --no-keys --no-osd --avdict rtsp_transport:tcp --win \"${window_positions[$x]}\" \"${camera_feeds[$i]}\" --live -n -1 --timeout "$omx_timeout" --dbus_name "org.mpris.MediaPlayer2.omxplayer.${camera_names[$i]}" >/dev/null &"
 		echo "Starting omxplayer for ${camera_names[$i]}"
 		eval $player
 		sleep $startsleep
@@ -264,7 +272,7 @@ do
 			fi
 			if [ "$2" != "startup" ]; then
 				echo "Restarting camera rotation"
-				rotatedisplays $rotatedelay $seq_step &
+				rotatedisplays $rotatedelay &
 			fi
 		fi
 	fi
@@ -274,7 +282,7 @@ done
 rotate)
 # Do nothing unless the service PID file exists
 if [ ! -f $PIDFILE ]; then exit 0; fi
-DISPLAY_SEQUENCE=$((DISPLAY_SEQUENCE-$seq_step))
+DISPLAY_SEQUENCE=$((DISPLAY_SEQUENCE-1))
 if [ "$DISPLAY_SEQUENCE" -lt "0" ]; then
         DISPLAY_SEQUENCE="$max_seq"
 fi
@@ -297,7 +305,7 @@ echo $DISPLAY_SEQUENCE > $DISPLAY_SEQUENCE_FILE
 
 rotaterev)
 if [ ! -f $PIDFILE ]; then exit 0; fi
-DISPLAY_SEQUENCE=$((DISPLAY_SEQUENCE+$seq_step))
+DISPLAY_SEQUENCE=$((DISPLAY_SEQUENCE+1))
 if [ "$DISPLAY_SEQUENCE" -ge "${#camera_names[@]}" ]; then
         DISPLAY_SEQUENCE=0
 fi
