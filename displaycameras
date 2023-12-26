@@ -171,10 +171,10 @@ echo "For complete status info, run"
 echo "/usr/bin/displaycameras status."
 if [ "$rotate" = "true" ]; then
 	if [ "$rotatedelay" = "" ]; then
-		rotatedisplays $rotatedelay $seq_step &
+		rotatedelay=5
 	fi
 	echo "Starting camera rotation"
-	rotatedisplays $rotatedelay &
+	rotatedisplays $rotatedelay $seq_step &
 fi
 ;;
 
