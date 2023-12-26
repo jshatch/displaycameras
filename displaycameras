@@ -85,6 +85,7 @@ max_seq=$((cameras-1))
 if [ "$seq_step" = "" ] || [ "$seq_step" -gt "$max_seq" ] || [ "$seq_step" -lt "1" ]; then
 	seq_step=1
 fi
+
 # Figure out the current display sequence or set it to zero if it doesn't exist.
 if [ ! -f $DISPLAY_SEQUENCE_FILE ]; then
 	echo 0 > $DISPLAY_SEQUENCE_FILE
